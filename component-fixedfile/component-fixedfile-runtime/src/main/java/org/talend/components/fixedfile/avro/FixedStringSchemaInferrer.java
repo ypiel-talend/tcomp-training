@@ -13,17 +13,19 @@
 package org.talend.components.fixedfile.avro;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
+import org.talend.components.fixedfile.utils.FixedFileUtils;
 import org.talend.daikon.avro.AvroUtils;
 
 /**
  * Creates (infers) {@link Schema} from data, which is read from data storage
  * This is used in case user specifies dynamic field in Design schema
  */
-public class DelimitedStringSchemaInferrer {
+public class FixedStringSchemaInferrer {
 
     /**
      * Default schema for dynamic fields are of type String
@@ -31,15 +33,15 @@ public class DelimitedStringSchemaInferrer {
     private static final Schema STRING_SCHEMA = AvroUtils._string();
 
     /**
-     * Field delimiter which is used in string line
+     * Field length which is used in string line
      */
-    private final String delimiter;
+    private final Integer length;
 
     /**
      * Constructors sets delimiter
      */
-    public DelimitedStringSchemaInferrer(String delimiter) {
-        this.delimiter = delimiter;
+    public FixedStringSchemaInferrer(Integer length) {
+        this.length = length;
     }
 
     /**
@@ -54,14 +56,20 @@ public class DelimitedStringSchemaInferrer {
      * @param delimitedString a line, which was read from file source
      * @return Runtime avro schema
      */
-    public Schema inferSchema(String delimitedString) {
-        String[] fields = delimitedString.split(delimiter);
-        int size = fields.length;
-        List<Field> schemaFields = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            Field designField = new Field("column" + i, STRING_SCHEMA, null, (Object) null);
-            schemaFields.add(i, designField);
+    public Schema inferSchema(String delimitedString) {        
+        List<Field> schemaFields = new ArrayList<>();
+        
+        List<String> fields = FixedFileUtils.fixedSplit(delimitedString, this.length);
+        Iterator<String> i = fields.iterator();
+        int n = 1;
+        while (i.hasNext()) {
+            String f = i.next();
+            Field designField = new Field("column" + n, STRING_SCHEMA, null, (Object) null);
+            schemaFields.add(designField);
+            
+            n++;
         }
+        
         Schema schema = Schema.createRecord("Runtime", null, null, false, schemaFields);
         return schema;
     }

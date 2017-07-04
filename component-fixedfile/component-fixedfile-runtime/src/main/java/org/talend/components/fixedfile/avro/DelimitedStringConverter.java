@@ -21,6 +21,8 @@ import org.apache.avro.Schema.Field;
 import org.apache.avro.Schema.Type;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.IndexedRecord;
+import org.talend.components.fixedfile.tfixedFileInput.FixedFileInputProperties.TRIM;
+import org.talend.components.fixedfile.utils.FixedFileUtils;
 import org.talend.daikon.avro.AvroUtils;
 import org.talend.daikon.avro.LogicalTypeUtils;
 import org.talend.daikon.avro.SchemaConstants;
@@ -35,7 +37,7 @@ import org.talend.daikon.avro.converter.string.StringStringConverter;
 import org.talend.daikon.avro.converter.string.StringTimestampConverter;
 
 /**
- * Converts delimited string to {@link IndexedRecord} and vice versa
+ * Converts Fixed string to {@link IndexedRecord} and vice versa
  * 
  * Delimited string example (delimiter is ';'): "first name;last name; age"
  * 
@@ -45,7 +47,7 @@ import org.talend.daikon.avro.converter.string.StringTimestampConverter;
  */
 public class DelimitedStringConverter implements AvroConverter<String, IndexedRecord> {
 
-	private static final String DEFAULT_DELIMITER = ";";
+	private static final Integer DEFAULT_LENGTH = 10;
 
 	/**
 	 * Contains available {@link StringConverter}. Avro type is used as a key
@@ -69,7 +71,9 @@ public class DelimitedStringConverter implements AvroConverter<String, IndexedRe
 		converterRegistry.put(Type.STRING, new StringStringConverter());
 	}
 
-	private final String delimiter;
+	private final Integer length;
+	
+	private final Map<String, TRIM> trimByField;
 
 	/**
 	 * Schema of Avro IndexedRecord
@@ -95,7 +99,7 @@ public class DelimitedStringConverter implements AvroConverter<String, IndexedRe
 	 *            avro schema
 	 */
 	public DelimitedStringConverter(Schema schema) {
-		this(schema, DEFAULT_DELIMITER);
+		this(schema, DEFAULT_LENGTH, new HashMap<String, TRIM>());
 	}
 
 	/**
@@ -105,10 +109,11 @@ public class DelimitedStringConverter implements AvroConverter<String, IndexedRe
 	 * @param schema
 	 *            avro schema
 	 */
-	public DelimitedStringConverter(Schema schema, String delimiter) {
+	public DelimitedStringConverter(Schema schema, Integer length, Map<String, TRIM> map) {
 		this.schema = schema;
-		this.delimiter = delimiter;
+		this.length = length;
 		this.size = schema.getFields().size();
+		this.trimByField = map;
 		initConverters(schema);
 	}
 
@@ -137,14 +142,26 @@ public class DelimitedStringConverter implements AvroConverter<String, IndexedRe
 
 	@Override
 	public IndexedRecord convertToAvro(String delimitedString) {
-		String[] fields = delimitedString.split(delimiter);
-		if (fields.length != size) {
-			throw new IllegalArgumentException("Input string has wrong number of fields");
+		List<String> fields = FixedFileUtils.fixedSplit(delimitedString, this.length);
+		if (fields.size() != size) {
+			throw new IllegalArgumentException("Input string has wrong number of fields : "+fields.size() +" != "+ size);
 		}
-
+		
+		List<Field> schFlds = this.schema.getFields();
+		for(int i=0; i<size; i++){
+		    Field schFld = schFlds.get(i);
+		    String fld = fields.get(i);
+		    
+		    TRIM trim = this.trimByField.get(schFld.name());
+		    if(trim != null) {
+		        fields.set(i, FixedFileUtils.trim(trim, fld));
+		    }
+		}
+		
+		
 		IndexedRecord record = new GenericData.Record(schema);
 		for (int i = 0; i < size; i++) {
-			Object value = converters[i].convertToAvro(fields[i]);
+			Object value = converters[i].convertToAvro(fields.get(i));
 			record.put(i, value);
 		}
 
@@ -163,10 +180,12 @@ public class DelimitedStringConverter implements AvroConverter<String, IndexedRe
 		for (int i = 0; i < size; i++) {
 			Object value = record.get(i);
 			String field = (String) converters[i].convertToDatum(value);
+			
+			if(field.length() != this.length) {
+			    throw new IllegalArgumentException("Length of the field is not good !");
+			}
 			sb.append(field);
-			sb.append(delimiter);
 		}
-		sb.deleteCharAt(sb.length() - 1);
 
 		return sb.toString();
 	}

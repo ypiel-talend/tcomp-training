@@ -21,6 +21,7 @@ import org.talend.components.api.component.runtime.ExecutionEngine;
 import org.talend.components.api.properties.ComponentProperties;
 import org.talend.components.fixedfile.RuntimeInfoProvider;
 import org.talend.daikon.properties.property.Property;
+import org.talend.daikon.properties.property.PropertyFactory;
 import org.talend.daikon.runtime.RuntimeInfo;
 
 /**
@@ -29,6 +30,8 @@ import org.talend.daikon.runtime.RuntimeInfo;
  * components (at run-time).
  */
 public class FixedFileInputDefinition extends AbstractComponentDefinition {
+    
+    public static final Property<Integer> RETURN_NB_FIELDS = PropertyFactory.newInteger("nbFields");  
     
     public static final String COMPONENT_NAME = "FixedFileInput"; //$NON-NLS-1$
 
@@ -55,7 +58,7 @@ public class FixedFileInputDefinition extends AbstractComponentDefinition {
      */
     @Override
     public Property[] getReturnProperties() {
-        return new Property[] { RETURN_TOTAL_RECORD_COUNT_PROP, RETURN_ERROR_MESSAGE_PROP };
+        return new Property[] { RETURN_TOTAL_RECORD_COUNT_PROP, RETURN_ERROR_MESSAGE_PROP, RETURN_NB_FIELDS };
     }
     
     @Override

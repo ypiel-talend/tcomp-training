@@ -24,7 +24,7 @@ import org.talend.components.common.FixedConnectorsComponentProperties;
 import org.talend.components.common.SchemaProperties;
 import org.talend.components.common.avro.RootSchemaUtils;
 import org.talend.components.fixedfile.RuntimeInfoProvider;
-import org.talend.components.fixedfile.StringDelimiter;
+import org.talend.components.fixedfile.helper.FixedFileTrimTableProperties;
 import org.talend.components.fixedfile.runtime.reader.SchemaDiscovery;
 import org.talend.daikon.properties.PresentationItem;
 import org.talend.daikon.properties.ValidationResult;
@@ -62,13 +62,21 @@ import org.talend.daikon.sandbox.SandboxedInstance;
 public class FixedFileInputProperties extends FixedConnectorsComponentProperties {
     
     /**
+     * The component can trim field in different way.
+     *  
+     * @author ypiel
+     *
+     */
+    public enum TRIM {NONE, BEGIN, END, BOTH};
+    
+    /**
      * Out of band (a.k.a flow variables) data schema
      * 
      * It has one field: int currentLine
      */
     public static final Schema outOfBandSchema;
     
-    private static final StringDelimiter DEFAULT_DELIMITER = StringDelimiter.SEMICOLON;
+    
 
     /**
      * Stores path to file to be read <br>
@@ -81,6 +89,22 @@ public class FixedFileInputProperties extends FixedConnectorsComponentProperties
      */
     public final Property<String> filename = PropertyFactory.newString("filename"); //$NON-NLS-1$
     
+    
+    /**
+     * Active or not the default file field Length.
+     * 
+     */
+    public final Property<Boolean> hasDefaultLength = PropertyFactory.newBoolean("hasDefaultLength", Boolean.FALSE);
+    /**
+     * The default length of a file's field.
+     * If 0 not take into account.
+     */
+    public final Property<Integer> defaultLength = PropertyFactory.newInteger("defaultLength", Integer.valueOf(0));
+    
+    public final Property<TRIM> trim = PropertyFactory.newEnum("trim", TRIM.class);
+    
+    public final FixedFileTrimTableProperties tableTrim = new FixedFileTrimTableProperties("tableTrim");
+    
     /**
      * Design schema of input component. Design schema defines data fields which
      * should be retrieved from Data Store. In this component example Data Store
@@ -88,26 +112,7 @@ public class FixedFileInputProperties extends FixedConnectorsComponentProperties
      */
     public final SchemaProperties schema = new SchemaProperties("schema"); //$NON-NLS-1$
     
-    /**
-     * Stores chosen delimiter. Property of type {@link EnumProperty} will be
-     * shown as dropdown list in UI
-     */
-    public final EnumProperty<StringDelimiter> delimiter = new EnumProperty<>(StringDelimiter.class, "delimiter"); //$NON-NLS-1$
 
-    /**
-     * Property parameterized with Boolean will be shown as a checkbox in UI If
-     * this property is true it allows user to specify custom delimiter
-     */
-    public final Property<Boolean> useCustomDelimiter = PropertyFactory.newBoolean("useCustomDelimiter"); //$NON-NLS-1$
-
-    /**
-     * Stores custom delimiter specified by user This property will be shown
-     * only if <code>useCustomDelimiter</code> is <code>true</code>. Otherwise
-     * it will be hidden. See {@link this#refreshLayout(Form)} method for
-     * details
-     */
-    public final Property<String> customDelimiter = PropertyFactory.newString("customDelimiter"); //$NON-NLS-1$
-    
     /**
      * This {@link PresentationItem} field is used to display button on UI form. {@link Widget#BUTTON_WIDGET_TYPE} should be set
      * for this widget to specify that it is a button. This button will be used to guess schema of delimited file
@@ -143,9 +148,6 @@ public class FixedFileInputProperties extends FixedConnectorsComponentProperties
     @Override
     public void setupProperties() {
         super.setupProperties();
-        this.delimiter.setValue(DEFAULT_DELIMITER);
-        this.useCustomDelimiter.setValue(false);
-        this.customDelimiter.setValue("");
     }
 
     /**
@@ -162,9 +164,10 @@ public class FixedFileInputProperties extends FixedConnectorsComponentProperties
         Form form = Form.create(this, Form.MAIN);
         form.addRow(schema.getForm(Form.REFERENCE));
         form.addRow(Widget.widget(filename).setWidgetType(Widget.FILE_WIDGET_TYPE));
-        form.addRow(useCustomDelimiter);
-        form.addColumn(delimiter);
-        form.addColumn(customDelimiter);
+        form.addRow(trim);
+        form.addRow(Widget.widget(tableTrim).setWidgetType(Widget.TABLE_WIDGET_TYPE));
+        form.addRow(hasDefaultLength)
+                .addColumn(defaultLength);
         form.addRow(Widget.widget(guessSchema).setWidgetType(Widget.BUTTON_WIDGET_TYPE));
     }
     
@@ -180,13 +183,8 @@ public class FixedFileInputProperties extends FixedConnectorsComponentProperties
         super.refreshLayout(form);
 
         if (form.getName().equals(Form.MAIN)) {
-            if (useCustomDelimiter.getValue()) {
-                form.getWidget(delimiter.getName()).setHidden();
-                form.getWidget(customDelimiter.getName()).setVisible();
-            } else {
-                form.getWidget(delimiter.getName()).setVisible();
-                form.getWidget(customDelimiter.getName()).setHidden();
-            }
+            form.getWidget(defaultLength.getName())
+                                    .setHidden(!hasDefaultLength.getValue());
         }
     }
     
@@ -194,8 +192,8 @@ public class FixedFileInputProperties extends FixedConnectorsComponentProperties
      * Callback method. Runtime Platform calls it after changes with UI element
      * This method should have name if following format {@code after
      * <PropertyName>}
-     */
-    public void afterUseCustomDelimiter() {
+     */   
+    public void afterHasDefaultLength() {
         refreshLayout(getForm(Form.MAIN));
     }
 

@@ -18,6 +18,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
@@ -25,14 +26,16 @@ import org.talend.components.api.component.runtime.BoundedSource;
 import org.talend.components.api.container.RuntimeContainer;
 import org.talend.components.api.properties.ComponentProperties;
 import org.talend.components.fixedfile.avro.DelimitedStringConverter;
-import org.talend.components.fixedfile.avro.DelimitedStringSchemaInferrer;
+import org.talend.components.fixedfile.avro.FixedStringSchemaInferrer;
 import org.talend.components.fixedfile.tfixedFileInput.FixedFileInputProperties;
+import org.talend.components.fixedfile.tfixedFileInput.FixedFileInputProperties.TRIM;
 import org.talend.daikon.NamedThing;
 import org.talend.daikon.avro.AvroUtils;
 import org.talend.daikon.avro.converter.AvroConverter;
 import org.talend.daikon.i18n.TranslatableImpl;
 import org.talend.daikon.properties.ValidationResult;
 import org.talend.daikon.properties.ValidationResult.Result;
+import org.talend.daikon.properties.presentation.Form;
 
 /**
  * The FixedFileInputSource provides the mechanism to supply data to other
@@ -63,14 +66,19 @@ public class FixedFileInputSource extends TranslatableImpl implements BoundedSou
      */
     @Override
     public ValidationResult initialize(RuntimeContainer container, ComponentProperties properties) {
+        ValidationResult result = ValidationResult.OK;
+        
         this.inputProperties = (FixedFileInputProperties) properties;
-        ValidationResult result;
         if (getFilePath().isEmpty()) {
             result = new ValidationResult().setStatus(Result.ERROR);
             result.setMessage(getI18nMessage("error.fileNameEmpty"));
-        } else {
-            result = ValidationResult.OK;
         }
+        
+        if(result.getStatus() == Result.OK && !validateDefaultLength()){
+            result = new ValidationResult().setStatus(Result.ERROR);
+            result.setMessage(getI18nMessage("error.badDefaultLength"));
+        }
+        
         return result;
     }
 
@@ -156,7 +164,7 @@ public class FixedFileInputSource extends TranslatableImpl implements BoundedSou
      *         {@link IndexedRecord}
      */
     AvroConverter<String, IndexedRecord> createConverter(Schema runtimeSchema) {
-        AvroConverter<String, IndexedRecord> converter = new DelimitedStringConverter(runtimeSchema, getDelimiter());
+        AvroConverter<String, IndexedRecord> converter = new DelimitedStringConverter(runtimeSchema, getDefaultLength(), inputProperties.tableTrim.getTrimByField());
         return converter;
     }
 
@@ -168,14 +176,24 @@ public class FixedFileInputSource extends TranslatableImpl implements BoundedSou
         return inputProperties.filename.getValue();
     }
     
-    String getDelimiter() {
-        if (inputProperties.useCustomDelimiter.getValue()) {
-            return inputProperties.customDelimiter.getValue();
-        } else {
-            return inputProperties.delimiter.getValue().getDelimiter();
+    Integer getDefaultLength() {
+        if (inputProperties.hasDefaultLength.getValue()) {
+            return inputProperties.defaultLength.getValue();
         }
+        
+        return 10;
     }
-
+    
+    boolean validateDefaultLength() {
+        boolean ret = true;
+        
+        if (inputProperties.hasDefaultLength.getValue() && inputProperties.defaultLength.getValue() < 1) {
+            ret = false;
+        }
+        
+        return ret;
+    }
+    
     /**
      * Provides Runtime schema for {@link FileInputReader}
      * If Design schema contains dynamic field, than Runtime schema is created from incoming data
@@ -200,6 +218,6 @@ public class FixedFileInputSource extends TranslatableImpl implements BoundedSou
      * @return avro Runtime schema
      */
     private Schema createRuntimeSchema(String delimitedString) {
-        return new DelimitedStringSchemaInferrer(getDelimiter()).inferSchema(delimitedString);
+        return new FixedStringSchemaInferrer(getDefaultLength()).inferSchema(delimitedString);
     }
 }

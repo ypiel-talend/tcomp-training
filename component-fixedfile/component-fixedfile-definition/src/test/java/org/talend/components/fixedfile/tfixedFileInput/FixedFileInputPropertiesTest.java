@@ -23,7 +23,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.Collection;
 
 import org.junit.Test;
-import org.talend.components.fixedfile.StringDelimiter;
 import org.talend.daikon.properties.presentation.Form;
 import org.talend.daikon.properties.presentation.Widget;
 
@@ -40,25 +39,15 @@ public class FixedFileInputPropertiesTest {
 		properties.setupLayout();
 
 		Form main = properties.getForm(Form.MAIN);
-		assertThat(main, notNullValue());
 
 		Collection<Widget> mainWidgets = main.getWidgets();
-		assertThat(mainWidgets, hasSize(6));
+		assertThat(mainWidgets, hasSize(7));
 
 		Widget schemaWidget = main.getWidget("schema");
 		assertThat(schemaWidget, notNullValue());
 
 		Widget fileWidget = main.getWidget("filename");
 		assertThat(fileWidget, notNullValue());
-
-		Widget useCustomDelimiterWidget = main.getWidget("useCustomDelimiter");
-		assertThat(useCustomDelimiterWidget, notNullValue());
-
-		Widget delimiterWidget = main.getWidget("delimiter");
-		assertThat(delimiterWidget, notNullValue());
-
-		Widget customDelimiterWidget = main.getWidget("customDelimiter");
-		assertThat(customDelimiterWidget, notNullValue());
 
 		Widget guessSchemaWidget = main.getWidget("guessSchema");
 		assertThat(guessSchemaWidget, notNullValue());
@@ -71,15 +60,6 @@ public class FixedFileInputPropertiesTest {
 	public void testSetupProperties() {
 		FixedFileInputProperties properties = new FixedFileInputProperties("root");
 		properties.setupProperties();
-
-		StringDelimiter delimiter = properties.delimiter.getValue();
-		assertThat(delimiter, equalTo(StringDelimiter.SEMICOLON));
-
-		boolean useCustomDelimiter = properties.useCustomDelimiter.getValue();
-		assertEquals(false, useCustomDelimiter);
-
-		String customDelimiter = properties.customDelimiter.getValue();
-		assertThat(customDelimiter, equalTo(""));
 	}
 
 	/**
@@ -97,15 +77,6 @@ public class FixedFileInputPropertiesTest {
 
 		boolean filenameHidden = properties.getForm(Form.MAIN).getWidget("filename").isHidden();
 		assertFalse(filenameHidden);
-
-		boolean useCustomDelimiterHidden = properties.getForm(Form.MAIN).getWidget("useCustomDelimiter").isHidden();
-		assertFalse(useCustomDelimiterHidden);
-
-		boolean delimiterHidden = properties.getForm(Form.MAIN).getWidget("delimiter").isHidden();
-		assertFalse(delimiterHidden);
-
-		boolean customDelimiterHidden = properties.getForm(Form.MAIN).getWidget("customDelimiter").isHidden();
-		assertTrue(customDelimiterHidden);
 
 		boolean guessSchemaHidden = properties.getForm(Form.MAIN).getWidget("guessSchema").isHidden();
 		assertFalse(guessSchemaHidden);

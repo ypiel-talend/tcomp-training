@@ -71,6 +71,10 @@ public class FixedFileInputReader extends AbstractBoundedReader<IndexedRecord> {
 
     @Override
     public boolean start() throws IOException {
+        if(this.started) {
+            throw new IOException(getCurrentSource().getFilePath() + " already started !");
+        }
+        
         reader = new BufferedReader(new FileReader(getCurrentSource().getFilePath()));
         result = new Result();
         LOGGER.debug("open: " + getCurrentSource().getFilePath()); //$NON-NLS-1$

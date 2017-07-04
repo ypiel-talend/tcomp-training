@@ -62,7 +62,7 @@ public class FixedFileInputDefinitionTest {
 		Property[] returnProperties = definition.getReturnProperties();
 		List<Property> propertyList = Arrays.asList(returnProperties);
 
-		assertThat(propertyList, hasSize(2));
+		assertThat(propertyList, hasSize(3));
 		assertTrue(propertyList.contains(RETURN_TOTAL_RECORD_COUNT_PROP));
 		assertTrue(propertyList.contains(RETURN_ERROR_MESSAGE_PROP));
 	}
